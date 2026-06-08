@@ -1,0 +1,70 @@
+---
+
+---
+
+<canvas id="canvas-screen" class="fixed top-0 left-0 w-full h-full"></canvas>
+
+<script>
+	import type { Camera, Model } from "../utils/renderer";
+	import { Renderer } from "../utils/renderer";
+	import { loadOBJModelFromURL } from "../utils/objParser";
+
+	const ANGULAR_VELOCITY = Math.PI * 0.5;
+
+	let modelPath: string = "/meshes/utah_teapot.obj";
+	let renderer: Renderer | null = null;
+
+	const canvas = document.getElementById("canvas-screen") as HTMLCanvasElement | null;
+	if (canvas) {
+		canvas.width = window.innerWidth;
+		canvas.height = window.innerHeight;
+
+		const ctx: CanvasRenderingContext2D | null = canvas.getContext("2d");
+		if (ctx) {
+			ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+			ctx.fillStyle = "rgb(0 0 0)";
+			ctx.fillRect(0, 0, window.innerWidth, window.innerHeight);
+
+			const camera: Camera = {
+				dimensions: { width: canvas.width, height: canvas.height },
+				viewport: {
+					x: 0,
+					y: 0,
+					width: canvas.width,
+					height: canvas.height,
+					perspective: canvas.width / canvas.height,
+				},
+				perspective: { fovY: 1.0, near: 0.1, far: 1000.0 },
+				position: { x: 0, y: 0, z: 0 },
+				rotation: { x: 0, y: 0, z: 0 },
+			};
+
+			let loadedModel: Model | null = null;
+			try {
+				loadedModel = await loadOBJModelFromURL(modelPath);
+			} catch (error) {
+				alert("Unable to load model");
+			}
+
+			if (loadedModel) {
+				renderer = new Renderer(camera, loadedModel, ctx);
+
+				renderer.translate({ x: 0, y: 0, z: -10 });
+
+				let lastTimestamp = performance.now();
+				const animate = (timestamp: number) => {
+					const dt = Math.min((timestamp - lastTimestamp) / 1000, 0.1);
+					lastTimestamp = timestamp;
+
+					if (!renderer) return;
+
+					renderer.clear();
+					renderer.rotateY(ANGULAR_VELOCITY * dt);
+					renderer.drawTriangleMesh();
+					requestAnimationFrame(animate);
+				};
+				requestAnimationFrame(animate);
+			}
+		}
+	}
+</script>
