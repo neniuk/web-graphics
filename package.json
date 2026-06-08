@@ -1,0 +1,28 @@
+{
+    "name": "",
+    "type": "module",
+    "version": "0.0.1",
+    "engines": {
+        "node": ">=22.12.0"
+    },
+    "scripts": {
+        "dev": "astro dev",
+        "build": "astro build",
+        "preview": "astro preview",
+        "astro": "astro"
+    },
+    "dependencies": {
+        "@astrojs/svelte": "^8.1.2",
+        "@tailwindcss/vite": "^4.3.0",
+        "astro": "^6.4.4",
+        "svelte": "^5.56.2",
+        "tailwindcss": "^4.3.0",
+        "typescript": "^6.0.3"
+    },
+    "devDependencies": {
+        "prettier": "^3.8.3",
+        "prettier-plugin-astro": "^0.14.1",
+        "prettier-plugin-svelte": "^4.1.0",
+        "prettier-plugin-tailwindcss": "^0.8.0"
+    }
+}
