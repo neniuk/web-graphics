@@ -1,4 +1,5 @@
 import type { Model, Vertex } from "./renderer";
+import { Vector3 } from "./vectors";
 
 export function parseOBJ(objText: string): Model {
     const vertices: Vertex[] = [];
@@ -22,8 +23,8 @@ export function parseOBJ(objText: string): Model {
             const z = parseFloat(parts[3]);
 
             vertices.push({
-                position: { x, y, z },
-                normal: { x: 0, y: 0, z: 0 },
+                position: new Vector3(x, y, z),
+                normal: Vector3.zero(),
             });
         } else if (type === "vn") {
             const x = parseFloat(parts[1]);
@@ -31,7 +32,7 @@ export function parseOBJ(objText: string): Model {
             const z = parseFloat(parts[3]);
 
             if (vertices.length > 0) {
-                vertices[vertices.length - 1].normal = { x, y, z };
+                vertices[vertices.length - 1].normal = new Vector3(x, y, z);
             }
         } else if (type === "vt") {
             // TODO: texture coords

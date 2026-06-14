@@ -1,36 +1,10 @@
-import type { Vector2, Vector3, Vector4 } from "./vectors";
+import { Vector2, Vector3, Vector4 } from "./vectors";
 import { Matrix4 } from "./matrices";
+import { Camera } from "./camera";
 
 export interface Vertex {
     position: Vector3;
     normal: Vector3;
-}
-
-export interface Viewport {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    perspective: number;
-}
-
-export interface Dimensions {
-    width: number;
-    height: number;
-}
-
-export interface Perspective {
-    fovY: number;
-    near: number;
-    far: number;
-}
-
-export interface Camera {
-    dimensions: Dimensions;
-    viewport: Viewport;
-    perspective: Perspective;
-    position: Vector3;
-    rotation: Vector3;
 }
 
 export interface Model {
@@ -56,9 +30,9 @@ export class Renderer {
         this._camera = camera;
         this._model = model;
         this._transformations = {
-            translation: { x: 0.0, y: 0.0, z: 0.0 },
-            rotation: { x: 0.0, y: 0.0, z: 0.0 },
-            scaling: { x: 1.0, y: 1.0, z: 1.0 },
+            translation: Vector3.zero(),
+            rotation: Vector3.zero(),
+            scaling: new Vector3(1.0, 1.0, 1.0),
         };
     }
 
@@ -93,7 +67,7 @@ export class Renderer {
     private _NDCToScreen(vec: Vector3): Vector2 {
         const screenX = ((vec.x + 1.0) / 2.0) * this._camera.dimensions.width;
         const screenY = ((1.0 - vec.y) / 2.0) * this._camera.dimensions.height;
-        return { x: screenX, y: screenY };
+        return new Vector2(screenX, screenY);
     }
 
     private _modelToWorldMatrix(): Matrix4 {
@@ -113,7 +87,7 @@ export class Renderer {
         scaling.set(1, 1, this._transformations.scaling.y);
         scaling.set(2, 2, this._transformations.scaling.z);
 
-        return translation.multiplyM(rotation).multiplyM(scaling);
+        return translation.mulm(rotation).mulm(scaling);
     }
 
     private _worldToCameraMatrix(): Matrix4 {
@@ -143,9 +117,9 @@ export class Renderer {
         rotation_z.set(1, 0, Math.sin(-cameraRotation.z));
         rotation_z.set(1, 1, Math.cos(-cameraRotation.z));
 
-        const rotation = rotation_z.multiplyM(rotation_y).multiplyM(rotation_x);
+        const rotation = rotation_z.mulm(rotation_y).mulm(rotation_x);
 
-        return rotation.multiplyM(translation);
+        return rotation.mulm(translation);
     }
 
     private _cameraToClipMatrix(): Matrix4 {
@@ -194,27 +168,27 @@ export class Renderer {
             const v2: Vertex = this._model.vertices[v2Idx];
             const v3: Vertex = this._model.vertices[v3Idx];
 
-            const vec1: Vector4 = { ...v1.position, w: 1.0 };
-            const vec2: Vector4 = { ...v2.position, w: 1.0 };
-            const vec3: Vector4 = { ...v3.position, w: 1.0 };
+            const vec1: Vector4 = Vector4.fromVector3(v1.position);
+            const vec2: Vector4 = Vector4.fromVector3(v2.position);
+            const vec3: Vector4 = Vector4.fromVector3(v3.position);
 
-            const worldV1 = modelToWorld.multiplyV(vec1);
-            const worldV2 = modelToWorld.multiplyV(vec2);
-            const worldV3 = modelToWorld.multiplyV(vec3);
+            const worldV1 = modelToWorld.mulv(vec1);
+            const worldV2 = modelToWorld.mulv(vec2);
+            const worldV3 = modelToWorld.mulv(vec3);
 
-            const cameraV1 = worldToCamera.multiplyV(worldV1);
-            const cameraV2 = worldToCamera.multiplyV(worldV2);
-            const cameraV3 = worldToCamera.multiplyV(worldV3);
+            const cameraV1 = worldToCamera.mulv(worldV1);
+            const cameraV2 = worldToCamera.mulv(worldV2);
+            const cameraV3 = worldToCamera.mulv(worldV3);
 
-            const clipV1 = cameraToClip.multiplyV(cameraV1);
-            const clipV2 = cameraToClip.multiplyV(cameraV2);
-            const clipV3 = cameraToClip.multiplyV(cameraV3);
+            const clipV1 = cameraToClip.mulv(cameraV1);
+            const clipV2 = cameraToClip.mulv(cameraV2);
+            const clipV3 = cameraToClip.mulv(cameraV3);
 
             if (clipV1.w <= 0 || clipV2.w <= 0 || clipV3.w <= 0) continue;
 
-            const ndcV1: Vector3 = { x: clipV1.x / clipV1.w, y: clipV1.y / clipV1.w, z: clipV1.z / clipV1.w };
-            const ndcV2: Vector3 = { x: clipV2.x / clipV2.w, y: clipV2.y / clipV2.w, z: clipV2.z / clipV2.w };
-            const ndcV3: Vector3 = { x: clipV3.x / clipV3.w, y: clipV3.y / clipV3.w, z: clipV3.z / clipV3.w };
+            const ndcV1: Vector3 = new Vector3(clipV1.x / clipV1.w, clipV1.y / clipV1.w, clipV1.z / clipV1.w);
+            const ndcV2: Vector3 = new Vector3(clipV2.x / clipV2.w, clipV2.y / clipV2.w, clipV2.z / clipV2.w);
+            const ndcV3: Vector3 = new Vector3(clipV3.x / clipV3.w, clipV3.y / clipV3.w, clipV3.z / clipV3.w);
 
             const screenV1: Vector2 = this._NDCToScreen(ndcV1);
             const screenV2: Vector2 = this._NDCToScreen(ndcV2);

@@ -1,0 +1,29 @@
+{
+    "cameraSpeed": 0.0010000000474974513,
+    "cameraToWorld": [
+        [1.0, 0.0, 0.0, 0.0],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0]
+    ],
+    "downscaleFactor": 8,
+    "guiWidth": 512,
+    "roptBounces": 3,
+    "roptDepthMax": 10.0,
+    "roptDepthMin": 0.0,
+    "roptDisplayUv": false,
+    "roptFilterRadius": 0.5,
+    "roptHeight": 200,
+    "roptParallelize": false,
+    "roptPixelFilter": "box",
+    "roptRandomSeed": 0,
+    "roptSamplesPerPixel": 1,
+    "roptSamplingPattern": "regular",
+    "roptShadeBack": false,
+    "roptShadows": true,
+    "roptShowProgress": true,
+    "roptStatistics": false,
+    "roptTransparentShadows": false,
+    "roptWidth": 200,
+    "scenePath": "public/scenes/r8_reflective_sphere.txt"
+}
