@@ -1,6 +1,9 @@
 import { Vector2, Vector3, Vector4 } from "./vectors";
 import { Matrix4 } from "./matrices";
 import { Camera } from "./camera";
+import { RayTracer } from "./rayTracer";
+import { Ray } from "./ray";
+import { Hit } from "./hit";
 
 export interface Vertex {
     position: Vector3;
@@ -21,14 +24,12 @@ export interface Transformations {
 export class Renderer {
     private _ctx: CanvasRenderingContext2D;
     private _camera: Camera;
-    private _model: Model;
     private _transformations: Transformations;
 
-    constructor(camera: Camera, model: Model, ctx: CanvasRenderingContext2D) {
+    constructor(camera: Camera, ctx: CanvasRenderingContext2D) {
         this._ctx = ctx;
         this._ctx.fillStyle = "rgb(255 255 255)";
         this._camera = camera;
-        this._model = model;
         this._transformations = {
             translation: Vector3.zero(),
             rotation: Vector3.zero(),
@@ -36,8 +37,12 @@ export class Renderer {
         };
     }
 
-    set model(model: Model) {
-        this._model = model;
+    resize(width: number, height: number): void {
+        this._camera.dimensions.width = width;
+        this._camera.dimensions.height = height;
+        this._camera.viewport.width = width;
+        this._camera.viewport.height = height;
+        this._camera.viewport.perspective = width / height;
     }
 
     translate(vec: Vector3): void {
@@ -91,6 +96,28 @@ export class Renderer {
     }
 
     private _worldToCameraMatrix(): Matrix4 {
+        if (this._camera.basis) {
+            const { right, up, forward } = this._camera.basis;
+            const cameraPosition = this._camera.position;
+            const backward = forward.negate();
+
+            const matrix = Matrix4.identity();
+            matrix.set(0, 0, right.x);
+            matrix.set(0, 1, right.y);
+            matrix.set(0, 2, right.z);
+            matrix.set(0, 3, -right.dot(cameraPosition));
+            matrix.set(1, 0, up.x);
+            matrix.set(1, 1, up.y);
+            matrix.set(1, 2, up.z);
+            matrix.set(1, 3, -up.dot(cameraPosition));
+            matrix.set(2, 0, backward.x);
+            matrix.set(2, 1, backward.y);
+            matrix.set(2, 2, backward.z);
+            matrix.set(2, 3, -backward.dot(cameraPosition));
+
+            return matrix;
+        }
+
         const cameraPosition = this._camera.position;
         const cameraRotation = this._camera.rotation;
 
@@ -138,13 +165,13 @@ export class Renderer {
         return matrix;
     }
 
-    drawTriangleMesh() {
+    drawTriangleMesh(model: Model) {
         const modelToWorld = this._modelToWorldMatrix();
         const worldToCamera = this._worldToCameraMatrix();
         const cameraToClip = this._cameraToClipMatrix();
 
-        const verticesLength: number = this._model.vertices.length;
-        const faces: number[][] = this._model.faces;
+        const verticesLength: number = model.vertices.length;
+        const faces: number[][] = model.faces;
         for (let i = 0; i < faces.length; i++) {
             const face = faces[i];
             if (face.length !== 3) continue;
@@ -164,9 +191,9 @@ export class Renderer {
             )
                 continue;
 
-            const v1: Vertex = this._model.vertices[v1Idx];
-            const v2: Vertex = this._model.vertices[v2Idx];
-            const v3: Vertex = this._model.vertices[v3Idx];
+            const v1: Vertex = model.vertices[v1Idx];
+            const v2: Vertex = model.vertices[v2Idx];
+            const v3: Vertex = model.vertices[v3Idx];
 
             const vec1: Vector4 = Vector4.fromVector3(v1.position);
             const vec2: Vector4 = Vector4.fromVector3(v2.position);
@@ -202,8 +229,76 @@ export class Renderer {
         this._ctx.clearRect(0, 0, this._camera.dimensions.width, this._camera.dimensions.height);
     }
 
+    drawRayTraced(rayTracer: RayTracer) {
+        const width = rayTracer.renderWidth;
+        const height = rayTracer.renderHeight;
+
+        const imageData = this._ctx.createImageData(width, height);
+
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                const ray = this.makeCameraRay(x, y, width, height);
+
+                const hit = new Hit(Number.POSITIVE_INFINITY);
+
+                const color = rayTracer.traceRay(ray, 1e-4, 3, 1.0, hit);
+
+                const i = (y * width + x) * 4;
+                imageData.data[i + 0] = Math.min(255, Math.max(0, color.x * 255));
+                imageData.data[i + 1] = Math.min(255, Math.max(0, color.y * 255));
+                imageData.data[i + 2] = Math.min(255, Math.max(0, color.z * 255));
+                imageData.data[i + 3] = 255;
+            }
+        }
+
+        const tempCanvas = document.createElement("canvas");
+        tempCanvas.width = width;
+        tempCanvas.height = height;
+
+        const tempCtx = tempCanvas.getContext("2d")!;
+        tempCtx.putImageData(imageData, 0, 0);
+
+        this._ctx.imageSmoothingEnabled = false;
+
+        this._ctx.drawImage(tempCanvas, 0, 0, this._camera.dimensions.width, this._camera.dimensions.height);
+    }
+
+    makeCameraRay(x: number, y: number, width: number, height: number): Ray {
+        const aspect = width / height;
+        const fov = this._camera.perspective.fovY;
+        const scale = Math.tan(fov * 0.5);
+
+        const px = (((x + 0.5) / width) * 2 - 1) * aspect * scale;
+        const py = (1 - ((y + 0.5) / height) * 2) * scale;
+
+        if (this._camera.basis) {
+            const { right, up, forward } = this._camera.basis;
+            const dir = right.scale(px).add(up.scale(py)).add(forward).normalize();
+
+            return new Ray(this._camera.position, dir);
+        }
+
+        let dir = new Vector3(px, py, -1).normalize();
+
+        const rot = this._camera.rotation;
+
+        let cy = Math.cos(rot.z);
+        let sy = Math.sin(rot.z);
+        dir = new Vector3(dir.x * cy - dir.y * sy, dir.x * sy + dir.y * cy, dir.z);
+
+        cy = Math.cos(rot.y);
+        sy = Math.sin(rot.y);
+        dir = new Vector3(dir.x * cy + dir.z * sy, dir.y, -dir.x * sy + dir.z * cy);
+
+        cy = Math.cos(rot.x);
+        sy = Math.sin(rot.x);
+        dir = new Vector3(dir.x, dir.y * cy - dir.z * sy, dir.y * sy + dir.z * cy);
+
+        return new Ray(this._camera.position, dir.normalize());
+    }
+
     drawTriangle(vec1: Vector2, vec2: Vector2, vec3: Vector2) {
-        // this._ctx.fillStyle = `rgb(255 255 255)`;
+        this._ctx.fillStyle = `rgb(255 255 255)`;
 
         this._ctx.beginPath();
         this._ctx.moveTo(vec1.x, vec1.y);

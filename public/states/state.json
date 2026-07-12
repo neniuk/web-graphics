@@ -6,7 +6,7 @@
         [0.0, 0.0, 1.0, 0.0],
         [0.0, 0.0, 0.0, 1.0]
     ],
-    "downscaleFactor": 8,
+    "downscaleFactor": 4,
     "guiWidth": 512,
     "roptBounces": 3,
     "roptDepthMax": 10.0,
@@ -25,5 +25,5 @@
     "roptStatistics": false,
     "roptTransparentShadows": false,
     "roptWidth": 200,
-    "scenePath": "public/scenes/r8_reflective_sphere.txt"
+    "scenePath": "/scenes/utah_teapot_2.gltf"
 }

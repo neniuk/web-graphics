@@ -1,23 +1,28 @@
 import { Hit } from "./hit";
 import { Ray } from "./ray";
 import { Vector3 } from "./vectors";
-import { SceneParser } from "./sceneParser";
+import { Scene } from "./scene";
 import { AppState } from "./appState";
 import type { Material } from "./material";
 import type { IncidentIllumination } from "./light";
+import type { RayTracerState } from "./rayTracerState";
 
 export class RayTracer {
     constructor(
-        private _scene: SceneParser,
-        private _state: AppState
+        private _scene: Scene,
+        private _state: AppState<RayTracerState>,
+        public renderWidth: number,
+        public renderHeight: number
     ) {}
 
     traceRay(ray: Ray, tmin: number, bounces: number, refractionIndex: number, hit: Hit): Vector3 {
         hit = new Hit(Number.POSITIVE_INFINITY);
 
         let intersect: boolean = false;
-        if (this._scene.group != null) {
-            intersect = this._scene.group.intersect(ray, hit, tmin);
+        for (const object of this._scene.objects) {
+            if (object.intersect(ray, hit, tmin)) {
+                intersect = true;
+            }
         }
 
         if (!intersect) return this._scene.backgroundColor;
@@ -33,14 +38,19 @@ export class RayTracer {
             const incidentIllumination: IncidentIllumination = this._scene.getLight(i).getIncidentIllumination(point);
 
             let blocked: boolean = false;
-            if (this._state.shadows) {
+            if (this._state.data.roptShadows) {
                 const epsilon: number = 1e-4;
                 const sOrigin: Vector3 = point.add(normal.scale(epsilon));
                 const sRay: Ray = new Ray(sOrigin, incidentIllumination.dirToLight);
 
                 const sHit: Hit = new Hit(Number.POSITIVE_INFINITY);
-                if (this._scene.group.intersect(sRay, sHit, epsilon)) {
-                    if (sHit.t < incidentIllumination.distance - epsilon) blocked = true;
+                for (const object of this._scene.objects) {
+                    if (object.intersect(sRay, sHit, epsilon)) {
+                        if (sHit.t < incidentIllumination.distance - epsilon) {
+                            blocked = true;
+                            break;
+                        }
+                    }
                 }
             }
 
@@ -51,7 +61,7 @@ export class RayTracer {
                         hit,
                         incidentIllumination.dirToLight,
                         incidentIllumination.incidentIntensity,
-                        this._state.shadeBack
+                        this._state.data.roptShadeBack
                     )
                 );
             }
@@ -66,7 +76,7 @@ export class RayTracer {
 
                 const mirrorOrigin: Vector3 = point.add(normal.scale(epsilon));
                 const idealMirrorDirection: Vector3 = dirNormalized
-                    .sub(normal.scale(2 * dirNormalized.dot(normal)))
+                    .sub(normalNormalized.scale(2 * dirNormalized.dot(normalNormalized)))
                     .normalize();
 
                 const mirrorRay: Ray = new Ray(mirrorOrigin, idealMirrorDirection);
@@ -87,5 +97,6 @@ export class RayTracer {
             }
         }
         return answer;
+        // return new Vector3(1, 0, 0);
     }
 }

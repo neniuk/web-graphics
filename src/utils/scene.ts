@@ -1,34 +1,24 @@
-import * as fs from "fs";
+import { Vector3 } from "./vectors";
 import type { Camera } from "./camera";
 import type { Light } from "./light";
 import type { Material } from "./material";
-import type { Object } from "./object/object";
-import { Vector3 } from "./vectors";
+import type { ObjectBase } from "./object/object";
 
 export class Scene {
     constructor(
         public camera: Camera,
         public lights: Light[],
-        public objects: Object[],
-        public materials: Material[]
+        public objects: ObjectBase[],
+        public materials: Material[],
+        public ambientLight: Vector3 = Vector3.zero(),
+        public backgroundColor: Vector3 = Vector3.zero()
     ) {}
 
-    loadGltf(path: string) {
-        this.renderCache.subMeshes.clear();
-        this.renderCache.vertices.clear();
-        this.renderCache.indices.clear();
-        this.renderCache.boundingBoxMin = new Vector3(
-            Number.POSITIVE_INFINITY,
-            Number.POSITIVE_INFINITY,
-            Number.POSITIVE_INFINITY
-        );
-        this.renderCache.boundingBoxMax = new Vector3(
-            Number.NEGATIVE_INFINITY,
-            Number.NEGATIVE_INFINITY,
-            Number.NEGATIVE_INFINITY
-        );
+    getNumLights(): number {
+        return this.lights.length;
+    }
 
-        const gltf: any = JSON.parse(fs.readFileSync(file, "utf8"));
-        const buffer = fs.readFileSync(binPath);
+    getLight(i: number): Light {
+        return this.lights[i];
     }
 }
